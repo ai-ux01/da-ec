@@ -1,0 +1,245 @@
+// AMRYTUM Backend — Internal truth machine.
+// Every jar traceable to a real batch. No fake stock.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------
+// Site content (brand, process, founder) — admin-editable, single row
+// -----------------------------------------------
+model SiteContent {
+  id            String   @id @default(uuid())
+  brand         Json     // { name, tagline, subtext, cta }
+  processSteps  Json     @map("process_steps") // [{ number, title, description }]
+  founder       Json     // { name, title, story, philosophy[], imagePlaceholder }
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("site_content")
+}
+
+// -----------------------------------------------
+// Catalog product (Buy page) — admin-editable
+// -----------------------------------------------
+model CatalogProduct {
+  id             String   @id @default(uuid())
+  productId      String   @unique @map("product_id") // e.g. a2-ghee
+  name           String
+  description    String
+  sizes          Json     // [{ id, label, price, inr }]
+  defaultSizeId  String   @map("default_size_id")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("catalog_products")
+}
+
+// -----------------------------------------------
+// Admin (magic link auth, no passwords)
+// -----------------------------------------------
+model Admin {
+  id                    String   @id @default(uuid())
+  email                 String   @unique
+  magicLinkToken        String?  @map("magic_link_token")
+  magicLinkExpiresAt    DateTime? @map("magic_link_expires_at")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+// -----------------------------------------------
+// Farm (source of milk)
+// -----------------------------------------------
+model Farm {
+  id        String   @id @default(uuid())
+  name      String
+  location  String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  batches   Batch[]
+
+  @@map("farms")
+}
+
+// -----------------------------------------------
+// Batch (one production run)
+// -----------------------------------------------
+model Batch {
+  id                  String    @id @default(uuid())
+  batchId             String    @unique @map("batch_id") // e.g. AMR-001
+  farmId              String    @map("farm_id")
+  farm                Farm      @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  date                DateTime  @db.Date
+  cowsCount           Int       @map("cows_count")
+  milkLiters          Decimal   @map("milk_liters") @db.Decimal(10, 2)
+  gheeOutputLiters    Decimal   @map("ghee_output_liters") @db.Decimal(10, 2)
+  processingNotes     String?   @map("processing_notes")
+  status              BatchStatus @default(PENDING)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  jars       Jar[]
+  labReports LabReport[]
+  orders     Order[]
+
+  @@map("batches")
+}
+
+enum BatchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// -----------------------------------------------
+// Jar (one physical unit, traceable to batch)
+// -----------------------------------------------
+model Jar {
+  id         String   @id @default(uuid())
+  jarId      String   @unique @map("jar_id") // UUID or QR code value
+  batchId    String   @map("batch_id")
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  size       JarSize
+  status     JarStatus @default(AVAILABLE)
+  customerId String?  @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@map("jars")
+}
+
+enum JarSize {
+  SIZE_250ML
+  SIZE_500ML
+  SIZE_1L
+}
+
+enum JarStatus {
+  AVAILABLE
+  SOLD
+}
+
+// -----------------------------------------------
+// Lab Report (per batch, PDF in S3)
+// -----------------------------------------------
+model LabReport {
+  id            String   @id @default(uuid())
+  batchId       String   @map("batch_id")
+  batch         Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  reportUrl     String   @map("report_url") // S3 key or full URL
+  fatPercent    Decimal? @map("fat_percent") @db.Decimal(5, 2)
+  moisture      Decimal? @db.Decimal(5, 2)
+  ffa           Decimal? @db.Decimal(5, 2)  // Free fatty acid
+  antibioticPass Boolean @map("antibiotic_pass")
+  remarks       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("lab_reports")
+}
+
+// -----------------------------------------------
+// Customer (OTP login: phone unique; CRM fields optional)
+// -----------------------------------------------
+model Customer {
+  id                String   @id @default(uuid())
+  phone             String?  @unique  // required for OTP login; unique when set
+  name              String?
+  email             String?
+  firstOrderBatchId String?  @map("first_order_batch_id")
+  repeatCount       Int      @default(0) @map("repeat_count")
+  complaints        String?
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  jars     Jar[]
+  orders   Order[]
+  addresses Address[]
+
+  @@map("customers")
+}
+
+// -----------------------------------------------
+// OTP (mobile verification; 5 min expiry, max 3 attempts)
+// -----------------------------------------------
+model Otp {
+  id         String   @id @default(uuid())
+  phone      String
+  otpCode    String   @map("otp_code")
+  expiresAt  DateTime @map("expires_at")
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("otps")
+}
+
+// -----------------------------------------------
+// Shipping address (per customer)
+// -----------------------------------------------
+model Address {
+  id           String   @id @default(uuid())
+  customerId   String   @map("customer_id")
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name         String
+  phone        String
+  addressLine1 String   @map("address_line1")
+  addressLine2 String?  @map("address_line2")
+  city         String
+  state        String
+  pincode      String
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@map("addresses")
+}
+
+
+// -----------------------------------------------
+// Order (one jar sold, one order record)
+// -----------------------------------------------
+model Order {
+  id             String   @id @default(uuid())
+  orderId        String   @unique @map("order_id") // human-readable e.g. ORD-001
+  customerId     String   @map("customer_id")
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  jarId          String   @map("jar_id")
+  jar            Jar      @relation(fields: [jarId], references: [id], onDelete: Restrict)
+  batchId        String   @map("batch_id")
+  batch          Batch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  paymentStatus  PaymentStatus @map("payment_status")
+  deliveryStatus DeliveryStatus @map("delivery_status")
+  address        String   // full address text (denormalized for display)
+  addressId      String?  @map("address_id")
+  shippingAddress Address? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+}

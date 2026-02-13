@@ -1,0 +1,133 @@
+{
+  "info": {
+    "name": "AMRYTUM API",
+    "description": "Backend API for AMRYTUM. Public endpoints are read-only. Admin endpoints require Bearer token from magic link.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:4000/health",
+        "description": "No auth. Service health check."
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Request magic link",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@amrytum.com\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/auth/request-link",
+            "description": "Returns dev_link in non-production. Use that URL or copy token to Verify."
+          }
+        },
+        {
+          "name": "Verify magic link (get token)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/auth/verify?token=PASTE_TOKEN_HERE",
+            "description": "Paste token from request-link response. Save returned 'token' to collection variable 'token'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public (no auth)",
+      "item": [
+        {
+          "name": "Get batch by batch_id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/batch/AMR-001",
+            "description": "Public transparency: get batch details by batch_id (e.g. AMR-001)."
+          }
+        },
+        {
+          "name": "Get lab reports for batch",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/batch/AMR-001/lab-reports",
+            "description": "Public: list lab reports for a batch_id."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin – Farms",
+      "item": [
+        { "name": "List farms", "request": { "method": "GET", "url": "{{baseUrl}}/farms", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Create farm", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Green Valley Farm\",\n  \"location\": \"Region X\",\n  \"notes\": \"Optional\"\n}" }, "url": "{{baseUrl}}/farms" } }
+      ]
+    },
+    {
+      "name": "Admin – Batches",
+      "item": [
+        { "name": "List batches", "request": { "method": "GET", "url": "{{baseUrl}}/batches", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Create batch", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"batchId\": \"AMR-001\",\n  \"farmId\": \"FARM_UUID\",\n  \"date\": \"2024-02-01\",\n  \"cowsCount\": 10,\n  \"milkLiters\": 100,\n  \"gheeOutputLiters\": 15,\n  \"processingNotes\": \"Optional\"\n}" }, "url": "{{baseUrl}}/batches" } },
+        { "name": "Update batch", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"processingNotes\": \"Updated notes\"\n}" }, "url": "{{baseUrl}}/batches/:id" } },
+        { "name": "Approve batch", "request": { "method": "POST", "url": "{{baseUrl}}/batches/:id/approve", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Reject batch", "request": { "method": "POST", "url": "{{baseUrl}}/batches/:id/reject", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } }
+      ]
+    },
+    {
+      "name": "Admin – Jars",
+      "item": [
+        { "name": "List jars", "request": { "method": "GET", "url": "{{baseUrl}}/jars", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Create jar", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"batchId\": \"BATCH_UUID\",\n  \"size\": \"SIZE_500ML\"\n}" }, "url": "{{baseUrl}}/jars" } },
+        { "name": "Create jars bulk", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"batchId\": \"BATCH_UUID\",\n  \"size\": \"SIZE_250ML\",\n  \"count\": 50\n}" }, "url": "{{baseUrl}}/jars/bulk" } },
+        { "name": "Update jar", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"SOLD\",\n  \"customerId\": \"CUSTOMER_UUID\"\n}" }, "url": "{{baseUrl}}/jars/:id" } }
+      ]
+    },
+    {
+      "name": "Admin – Lab reports",
+      "item": [
+        { "name": "List lab reports", "request": { "method": "GET", "url": "{{baseUrl}}/lab-reports", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Upload lab report PDF", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }, { "key": "batchId", "value": "BATCH_UUID" }, { "key": "antibioticPass", "value": "true" }, { "key": "fatPercent", "value": "99.2" }] }, "url": "{{baseUrl}}/lab-reports/upload" } }
+      ]
+    },
+    {
+      "name": "Admin – Customers",
+      "item": [
+        { "name": "List customers", "request": { "method": "GET", "url": "{{baseUrl}}/customers", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Create customer", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Customer Name\",\n  \"phone\": \"+91 9876543210\",\n  \"email\": \"customer@example.com\",\n  \"notes\": \"Optional\"\n}" }, "url": "{{baseUrl}}/customers" } },
+        { "name": "Update customer", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Updated\"\n}" }, "url": "{{baseUrl}}/customers/:id" } }
+      ]
+    },
+    {
+      "name": "Admin – Orders",
+      "item": [
+        { "name": "List orders", "request": { "method": "GET", "url": "{{baseUrl}}/orders", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Create order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"ORD-001\",\n  \"customerId\": \"CUSTOMER_UUID\",\n  \"jarId\": \"JAR_UUID\",\n  \"batchId\": \"BATCH_UUID\",\n  \"address\": \"Full delivery address\"\n}" }, "url": "{{baseUrl}}/orders" } },
+        { "name": "Update order", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"paymentStatus\": \"PAID\",\n  \"deliveryStatus\": \"SHIPPED\"\n}" }, "url": "{{baseUrl}}/orders/:id" } }
+      ]
+    },
+    {
+      "name": "Admin – Site content",
+      "item": [
+        { "name": "Get site content", "request": { "method": "GET", "url": "{{baseUrl}}/admin/site", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Update site content", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"brand\": { \"tagline\": \"From Farm to Ghee. No shortcuts.\", \"cta\": \"Join the first batch\" }\n}" }, "url": "{{baseUrl}}/admin/site" } }
+      ]
+    },
+    {
+      "name": "Admin – Catalog",
+      "item": [
+        { "name": "List catalog products", "request": { "method": "GET", "url": "{{baseUrl}}/admin/catalog", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } },
+        { "name": "Create catalog product", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"productId\": \"a2-ghee\",\n  \"name\": \"A2 Desi Cow Ghee\",\n  \"description\": \"Small batch, bilona method.\",\n  \"sizes\": [{\"id\": \"500ml\", \"label\": \"500 ml\", \"price\": 1699, \"inr\": \"₹1,699\"}],\n  \"defaultSizeId\": \"500ml\",\n  \"sortOrder\": 0\n}" }, "url": "{{baseUrl}}/admin/catalog/products" } },
+        { "name": "Update catalog product", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated name\"\n}" }, "url": "{{baseUrl}}/admin/catalog/products/:id" } },
+        { "name": "Delete catalog product", "request": { "method": "DELETE", "url": "{{baseUrl}}/admin/catalog/products/:id", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] } }
+      ]
+    }
+  ]
+}
