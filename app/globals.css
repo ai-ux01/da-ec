@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --cream-50: #FDFCFA;
+    --cream-100: #FAF8F4;
+    --earth-500: #5C4A38;
+    --earth-600: #3D3228;
+    --gold-300: #B8A078;
+    --font-cormorant: "Cormorant Garamond", Georgia, Cambria, serif;
+    --font-inter: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    @apply box-border;
+  }
+
+  body {
+    @apply bg-cream-50 text-earth-600 font-sans antialiased box-border;
+  }
+
+  /* Prevent layout distortion from overflowing content */
+  html,
+  body {
+    max-width: 100vw;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-earth-500/20 text-earth-600;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
