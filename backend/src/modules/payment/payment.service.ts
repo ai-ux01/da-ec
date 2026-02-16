@@ -5,6 +5,18 @@ import { config } from "../../lib/config.js";
 import { orderService, CheckoutError } from "../order/order.service.js";
 import type { JarSize } from "@prisma/client";
 
+/** Session row as returned by findUnique (used when generated Prisma types are not picked up). */
+type PaymentSessionRow = { id: string; customerId: string; addressId: string; batchId: string; items: PaymentSessionItem[] };
+// PrismaClient from generated client includes paymentSession; cast for IDEs that resolve a different @prisma/client
+const db = prisma as InstanceType<typeof import("@prisma/client").PrismaClient> & {
+  paymentSession: {
+    updateMany: (args: object) => Promise<{ count: number }>;
+    create: (args: { data: object }) => Promise<object>;
+    findUnique: (args: { where: object; include?: object }) => Promise<PaymentSessionRow | null>;
+    update: (args: { where: object; data: object }) => Promise<object>;
+  };
+};
+
 export type PaymentSessionItem = { size: JarSize; quantity: number };
 
 export type CreatePaymentOrderInput = {
@@ -51,7 +63,7 @@ export const paymentService = {
       throw new PaymentError("Address not found.");
     }
     const expiredAt = new Date(Date.now() - PAYMENT_SESSION_EXPIRY_MS);
-    await prisma.paymentSession.updateMany({
+    await db.paymentSession.updateMany({
       where: { status: "PENDING", createdAt: { lt: expiredAt } },
       data: { status: "EXPIRED" },
     });
@@ -84,7 +96,7 @@ export const paymentService = {
                 : "Payment provider error. Check server logs.";
       throw new PaymentError(msg);
     }
-    await prisma.paymentSession.create({
+    await db.paymentSession.create({
       data: {
         razorpayOrderId: order.id,
         customerId: data.customerId,
@@ -151,7 +163,7 @@ export const paymentService = {
     if (!this.verifySignature(orderId, paymentId, signature)) {
       throw new PaymentError("Invalid payment signature.");
     }
-    const session = await prisma.paymentSession.findUnique({
+    const session = await db.paymentSession.findUnique({
       where: { razorpayOrderId: orderId, status: "PENDING" },
       include: { address: true },
     });
@@ -177,7 +189,7 @@ export const paymentService = {
         orders.push(order);
       }
     }
-    await prisma.paymentSession.update({
+    await db.paymentSession.update({
       where: { id: session.id },
       data: { status: "COMPLETED", completedAt: new Date() },
     });
@@ -186,7 +198,7 @@ export const paymentService = {
 
   /** Fulfill session (used by webhook after signature verified). Does not verify signature. */
   async fulfillSession(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
-    const session = await prisma.paymentSession.findUnique({
+    const session = await db.paymentSession.findUnique({
       where: { razorpayOrderId, status: "PENDING" },
     });
     if (!session) return;
@@ -205,7 +217,7 @@ export const paymentService = {
         });
       }
     }
-    await prisma.paymentSession.update({
+    await db.paymentSession.update({
       where: { id: session.id },
       data: { status: "COMPLETED", completedAt: new Date() },
     });
