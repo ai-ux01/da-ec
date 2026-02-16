@@ -18,7 +18,7 @@ Minimal, production-ready backend for the AMRYTUM food brand. Accountability and
 cp .env.example .env
 ```
 
-Edit `.env`: set `DATABASE_URL`, `JWT_SECRET` (min 32 chars), and optionally S3 keys.
+Edit `.env`: set `DATABASE_URL`, `JWT_SECRET` (min 32 chars). For production: set Razorpay keys, `CORS_ORIGIN`, and SMS (Twilio) for OTP. See **Environment variables** below.
 
 2. **Install and generate Prisma client**
 
@@ -45,6 +45,25 @@ npm run build && npm start
 ```
 
 Server runs at `http://localhost:4000` by default. API prefix: `/api`.
+
+**Health check:** `GET /health` — use this as the health check URL in your host (e.g. Render).
+
+**Migrations:** For production, run `npm run db:migrate:prod` (or `npx prisma migrate deploy`) before first deploy and after schema changes.
+
+## Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes (prod) | Min 32 chars for admin JWT |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | For payments | From Razorpay Dashboard |
+| `RAZORPAY_WEBHOOK_SECRET` | For webhook | From Razorpay → Webhooks |
+| `CORS_ORIGIN` | Prod | Comma-separated frontend origins (e.g. `https://your-app.vercel.app`) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` | Prod (OTP) | For sending OTP SMS; unset = mock (log only) |
+
+### SMS (OTP)
+
+Customer login uses phone OTP. In **production**, set all three Twilio env vars so real SMS is sent. If they are unset, the server uses a **mock** (logs the OTP to the console only) — fine for local dev, but customers cannot log in in production until Twilio is configured. Get credentials from [Twilio Console](https://console.twilio.com); use a number that can send to Indian mobiles for +91.
 
 ## API overview
 

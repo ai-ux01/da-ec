@@ -164,9 +164,10 @@ model Customer {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  jars     Jar[]
-  orders   Order[]
-  addresses Address[]
+  jars             Jar[]
+  orders           Order[]
+  addresses        Address[]
+  paymentSessions  PaymentSession[]
 
   @@map("customers")
 }
@@ -203,7 +204,8 @@ model Address {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  orders Order[]
+  orders          Order[]
+  paymentSessions PaymentSession[]
 
   @@map("addresses")
 }
@@ -242,4 +244,30 @@ enum DeliveryStatus {
   PENDING
   SHIPPED
   DELIVERED
+}
+
+// -----------------------------------------------
+// Payment session (Razorpay Option B: create order only after payment)
+// -----------------------------------------------
+model PaymentSession {
+  id                String   @id @default(uuid())
+  razorpayOrderId   String   @unique @map("razorpay_order_id")
+  customerId        String   @map("customer_id")
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  addressId         String   @map("address_id")
+  address           Address  @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  batchId           String   @map("batch_id") // human e.g. AMR-001
+  amountPaise       Int      @map("amount_paise")
+  items             Json     // [{ size: JarSize, quantity: number }]
+  status            PaymentSessionStatus @default(PENDING)
+  createdAt         DateTime @default(now()) @map("created_at")
+  completedAt       DateTime? @map("completed_at")
+
+  @@map("payment_sessions")
+}
+
+enum PaymentSessionStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
 }

@@ -2,7 +2,7 @@ import { randomInt } from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { config } from "../../lib/config.js";
 import { signCustomerToken } from "../../lib/auth.js";
-import { sendOtpSms } from "./sms.mock.js";
+import { sendOtpSms } from "./sms.js";
 
 const OTP_EXPIRY_MS = config.otp.expiryMinutes * 60 * 1000;
 const OTP_LENGTH = config.otp.length;

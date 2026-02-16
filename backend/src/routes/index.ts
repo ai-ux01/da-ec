@@ -15,6 +15,7 @@ import { requireAdmin } from "../lib/middleware.js";
 import { labController } from "../modules/lab/lab.controller.js";
 import { labRouter, labUpload } from "../modules/lab/lab.routes.js";
 import { orderRouter } from "../modules/order/order.routes.js";
+import { paymentRouter } from "../modules/payment/payment.routes.js";
 import { customerRouter } from "../modules/customer/customer.routes.js";
 import { config } from "../lib/config.js";
 
@@ -60,6 +61,7 @@ api.use(siteRouter);
 api.use(farmRouter);
 api.use(jarRouter);
 api.use(orderRouter);
+api.use(paymentRouter);
 api.use(customerRouter);
 
 export function mountRoutes(root: Router) {

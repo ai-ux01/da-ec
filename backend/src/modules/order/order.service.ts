@@ -19,6 +19,8 @@ export type CheckoutOrderInput = {
   jarId?: string;
   batchId?: string;
   size?: JarSize;
+  /** When creating order after Razorpay success, pass PAID. Default PENDING. */
+  paymentStatus?: PaymentStatus;
 };
 
 export type UpdateOrderInput = {
@@ -116,13 +118,14 @@ export const orderService = {
     const addressText = formatAddressLine(address);
 
     return prisma.$transaction(async (tx) => {
+      const paymentStatus = data.paymentStatus ?? "PENDING";
       const order = await tx.order.create({
         data: {
           orderId,
           customerId,
           jarId: jar.id,
           batchId: jar.batchId,
-          paymentStatus: "PENDING",
+          paymentStatus,
           deliveryStatus: "PENDING",
           address: addressText,
           addressId: address.id,

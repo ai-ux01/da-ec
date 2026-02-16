@@ -12,6 +12,12 @@ function optionalEnv(name: string, fallback: string): string {
 
 const nodeEnv = optionalEnv("NODE_ENV", "development");
 const isDev = nodeEnv === "development";
+const isProd = nodeEnv === "production";
+
+// In production, never default to localhost
+if (isProd && process.env.DATABASE_URL?.includes("localhost")) {
+  throw new Error("DATABASE_URL must not point to localhost in production.");
+}
 
 // In development, allow missing DATABASE_URL/JWT_SECRET so server can start (will fail on first DB/auth use)
 const databaseUrl = process.env.DATABASE_URL ?? (isDev ? "postgresql://localhost:5432/amrytum?schema=public" : "");
@@ -24,8 +30,20 @@ if (isDev && !process.env.JWT_SECRET) {
   console.warn("Warning: JWT_SECRET not set. Using a dev default — set JWT_SECRET in .env for production.");
 }
 
+// Razorpay: required in production if payment routes are used
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID ?? "";
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET ?? "";
+if (isProd && (!razorpayKeyId || !razorpayKeySecret)) {
+  console.warn("Warning: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET should be set in production for payments.");
+}
+
+// CORS: in production allow only frontend origin(s)
+const corsAllowedOrigin = process.env.CORS_ORIGIN ?? (isDev ? "" : "");
+
 export const config = {
   nodeEnv,
+  isProd,
+  isDev,
   port: parseInt(optionalEnv("PORT", "4000"), 10),
   apiPrefix: optionalEnv("API_PREFIX", "/api"),
 
@@ -50,7 +68,6 @@ export const config = {
   },
 
   customerJwt: {
-    // Long-lived so customer stays logged in (token in localStorage); override with CUSTOMER_JWT_EXPIRES_IN if needed
     expiresIn: optionalEnv("CUSTOMER_JWT_EXPIRES_IN", "3650d"),
   },
 
@@ -61,5 +78,16 @@ export const config = {
     accessKey: optionalEnv("S3_ACCESS_KEY", ""),
     secretKey: optionalEnv("S3_SECRET_KEY", ""),
     useSSL: optionalEnv("S3_USE_SSL", "false") === "true",
+  },
+
+  razorpay: {
+    keyId: razorpayKeyId,
+    keySecret: razorpayKeySecret,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",
+  },
+
+  cors: {
+    /** Comma-separated list of origins to allow. Empty = allow same-origin + common dev. */
+    allowedOrigin: corsAllowedOrigin,
   },
 } as const;
