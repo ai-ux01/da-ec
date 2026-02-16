@@ -6,7 +6,7 @@ import { orderService, CheckoutError } from "../order/order.service.js";
 import type { JarSize } from "@prisma/client";
 
 /** Session row as returned by findUnique (used when generated Prisma types are not picked up). */
-type PaymentSessionRow = { id: string; customerId: string; addressId: string; batchId: string; items: PaymentSessionItem[] };
+type PaymentSessionRow = { id: string; customerId: string; addressId: string; batchId: string; amountPaise: number; items: PaymentSessionItem[] };
 // PrismaClient from generated client includes paymentSession; cast for IDEs that resolve a different @prisma/client
 const db = prisma as InstanceType<typeof import("@prisma/client").PrismaClient> & {
   paymentSession: {
@@ -131,6 +131,8 @@ export const paymentService = {
     if (!address) {
       throw new PaymentError("Address not found.");
     }
+    const totalQuantity = data.items.reduce((sum, item) => sum + item.quantity, 0);
+    const amountPerOrder = totalQuantity > 0 ? Math.round(data.amountPaise / totalQuantity) : 0;
     const orders: Awaited<ReturnType<typeof orderService.createFromCheckout>>[] = [];
     for (const item of data.items) {
       for (let q = 0; q < item.quantity; q++) {
@@ -140,6 +142,7 @@ export const paymentService = {
           batchId: data.batchId,
           size: item.size,
           paymentStatus: "PENDING",
+          amountPaise: amountPerOrder > 0 ? amountPerOrder : undefined,
         });
         orders.push(order);
       }
@@ -176,6 +179,8 @@ export const paymentService = {
       throw new PaymentError("Payment not captured.");
     }
     const items = session.items as PaymentSessionItem[];
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    const amountPerOrder = totalQuantity > 0 ? Math.round(session.amountPaise / totalQuantity) : 0;
     const orders: Awaited<ReturnType<typeof orderService.createFromCheckout>>[] = [];
     for (const item of items) {
       for (let q = 0; q < item.quantity; q++) {
@@ -185,6 +190,7 @@ export const paymentService = {
           batchId: session.batchId,
           size: item.size,
           paymentStatus: "PAID",
+          amountPaise: amountPerOrder > 0 ? amountPerOrder : undefined,
         });
         orders.push(order);
       }
@@ -206,6 +212,8 @@ export const paymentService = {
     const payment = await razorpay.payments.fetch(razorpayPaymentId);
     if (payment.status !== "captured") return;
     const items = session.items as PaymentSessionItem[];
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    const amountPerOrder = totalQuantity > 0 ? Math.round(session.amountPaise / totalQuantity) : 0;
     for (const item of items) {
       for (let q = 0; q < item.quantity; q++) {
         await orderService.createFromCheckout({
@@ -214,6 +222,7 @@ export const paymentService = {
           batchId: session.batchId,
           size: item.size,
           paymentStatus: "PAID",
+          amountPaise: amountPerOrder > 0 ? amountPerOrder : undefined,
         });
       }
     }

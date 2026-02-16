@@ -228,6 +228,7 @@ model Order {
   address        String   // full address text (denormalized for display)
   addressId      String?  @map("address_id")
   shippingAddress Address? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  amountPaise    Int?     @map("amount_paise") // order value in paise (for revenue); set from payment/COD
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

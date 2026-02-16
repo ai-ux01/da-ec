@@ -358,7 +358,19 @@ export type AdminOrderApi = {
   paymentStatus: string;
   deliveryStatus: string;
   address: string;
+  amountPaise: number | null;
   createdAt: string;
+};
+
+export type AdminOrdersStatsApi = {
+  totalOrders: number;
+  paidOrders: number;
+  pendingPaymentOrders: number;
+  refundedOrders: number;
+  pendingDelivery: number;
+  shipped: number;
+  delivered: number;
+  totalRevenuePaise: number;
 };
 
 export async function fetchAdminOrders(
@@ -371,6 +383,22 @@ export async function fetchAdminOrders(
   if (params?.deliveryStatus) q.set("deliveryStatus", params.deliveryStatus);
   const query = q.toString();
   return apiFetch<AdminOrderApi[]>(`orders${query ? `?${query}` : ""}`, { token });
+}
+
+export async function updateAdminOrder(
+  token: string,
+  orderId: string,
+  body: { paymentStatus?: string; deliveryStatus?: string }
+): Promise<AdminOrderApi> {
+  return apiFetch<AdminOrderApi>(`orders/${orderId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchAdminOrdersStats(token: string): Promise<AdminOrdersStatsApi> {
+  return apiFetch<AdminOrdersStatsApi>("orders/stats", { token });
 }
 
 // --- Admin: customers ---
@@ -412,6 +440,36 @@ export async function fetchAdminBatches(
   return apiFetch<AdminBatchApi[]>(`batches${query ? `?${query}` : ""}`, { token });
 }
 
+export type CreateBatchBody = {
+  batchId: string;
+  farmId: string;
+  date: string;
+  cowsCount: number;
+  milkLiters: number;
+  gheeOutputLiters: number;
+  processingNotes?: string;
+};
+
+export async function createAdminBatch(token: string, body: CreateBatchBody): Promise<AdminBatchApi> {
+  return apiFetch<AdminBatchApi>("batches", { method: "POST", token, body: JSON.stringify(body) });
+}
+
+export async function approveAdminBatch(token: string, batchIdUuid: string): Promise<AdminBatchApi> {
+  return apiFetch<AdminBatchApi>(`batches/${batchIdUuid}/approve`, { method: "POST", token });
+}
+
+export async function rejectAdminBatch(token: string, batchIdUuid: string): Promise<AdminBatchApi> {
+  return apiFetch<AdminBatchApi>(`batches/${batchIdUuid}/reject`, { method: "POST", token });
+}
+
+// --- Admin: farms (for batch create dropdown) ---
+
+export type AdminFarmApi = { id: string; name: string };
+
+export async function fetchAdminFarms(token: string): Promise<AdminFarmApi[]> {
+  return apiFetch<AdminFarmApi[]>("farms", { token });
+}
+
 // --- Admin: jars (product/stock status) ---
 
 export type AdminJarApi = {
@@ -434,6 +492,23 @@ export async function fetchAdminJars(
   if (params?.size) q.set("size", params.size);
   const query = q.toString();
   return apiFetch<AdminJarApi[]>(`jars${query ? `?${query}` : ""}`, { token });
+}
+
+export type CreateJarsBulkBody = {
+  batchId: string;
+  size: "SIZE_250ML" | "SIZE_500ML" | "SIZE_1L";
+  count: number;
+};
+
+export async function createAdminJarsBulk(
+  token: string,
+  body: CreateJarsBulkBody
+): Promise<{ count: number; jars: AdminJarApi[] }> {
+  return apiFetch<{ count: number; jars: AdminJarApi[] }>("jars/bulk", {
+    method: "POST",
+    token,
+    body: JSON.stringify(body),
+  });
 }
 
 // --- Admin: catalog (products) ---

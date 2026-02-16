@@ -21,6 +21,8 @@ export type CheckoutOrderInput = {
   size?: JarSize;
   /** When creating order after Razorpay success, pass PAID. Default PENDING. */
   paymentStatus?: PaymentStatus;
+  /** Order value in paise (for revenue). Set from payment session or COD cart total split. */
+  amountPaise?: number;
 };
 
 export type UpdateOrderInput = {
@@ -119,17 +121,19 @@ export const orderService = {
 
     return prisma.$transaction(async (tx) => {
       const paymentStatus = data.paymentStatus ?? "PENDING";
+      const createData = {
+        orderId,
+        customerId,
+        jarId: jar.id,
+        batchId: jar.batchId,
+        paymentStatus,
+        deliveryStatus: "PENDING",
+        address: addressText,
+        addressId: address.id,
+        amountPaise: data.amountPaise ?? null,
+      };
       const order = await tx.order.create({
-        data: {
-          orderId,
-          customerId,
-          jarId: jar.id,
-          batchId: jar.batchId,
-          paymentStatus,
-          deliveryStatus: "PENDING",
-          address: addressText,
-          addressId: address.id,
-        },
+        data: createData as Parameters<typeof tx.order.create>[0]["data"],
         include: { customer: true, jar: true, batch: true, shippingAddress: true },
       });
 
@@ -189,5 +193,33 @@ export const orderService = {
       include: { customer: true, jar: true, batch: true, shippingAddress: true },
       orderBy: { createdAt: "desc" },
     });
+  },
+
+  /** Admin dashboard: aggregate counts and revenue from orders. */
+  async getAdminStats() {
+    const [total, paid, pending, refunded, pendingDelivery, shipped, delivered, revenueResult] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.count({ where: { paymentStatus: "PAID" } }),
+      prisma.order.count({ where: { paymentStatus: "PENDING" } }),
+      prisma.order.count({ where: { paymentStatus: "REFUNDED" } }),
+      prisma.order.count({ where: { paymentStatus: "PAID", deliveryStatus: "PENDING" } }),
+      prisma.order.count({ where: { deliveryStatus: "SHIPPED" } }),
+      prisma.order.count({ where: { deliveryStatus: "DELIVERED" } }),
+      prisma.order.aggregate({
+        where: { paymentStatus: "PAID" },
+        _sum: { amountPaise: true },
+      } as Parameters<typeof prisma.order.aggregate>[0]),
+    ]);
+    const totalRevenuePaise = (revenueResult as unknown as { _sum: { amountPaise: number | null } })._sum.amountPaise ?? 0;
+    return {
+      totalOrders: total,
+      paidOrders: paid,
+      pendingPaymentOrders: pending,
+      refundedOrders: refunded,
+      pendingDelivery,
+      shipped,
+      delivered,
+      totalRevenuePaise,
+    };
   },
 };

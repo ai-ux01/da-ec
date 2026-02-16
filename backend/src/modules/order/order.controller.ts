@@ -75,6 +75,15 @@ export const orderController = {
     res.json(list);
   },
 
+  async getStats(req: AuthRequest, res: Response) {
+    try {
+      const stats = await orderService.getAdminStats();
+      res.json(stats);
+    } catch (e) {
+      throw e;
+    }
+  },
+
   async createFromCheckout(req: CustomerAuthRequest, res: Response) {
     const customerId = req.customer?.customerId;
     if (!customerId) {

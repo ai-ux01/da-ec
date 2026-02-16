@@ -10,6 +10,7 @@ orderRouter.get("/orders/me", requireCustomer, orderController.myOrders.bind(ord
 
 orderRouter.use(requireAdmin);
 orderRouter.post("/orders", orderController.create.bind(orderController));
+orderRouter.get("/orders/stats", orderController.getStats.bind(orderController));
 orderRouter.get("/orders", orderController.listAdmin.bind(orderController));
 orderRouter.get("/orders/:id", orderController.getById.bind(orderController));
 orderRouter.patch("/orders/:id", orderController.update.bind(orderController));
