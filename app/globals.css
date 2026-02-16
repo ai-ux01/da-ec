@@ -17,6 +17,11 @@
     scroll-behavior: smooth;
     @apply box-border;
   }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
 
   body {
     @apply bg-cream-50 text-earth-600 font-sans antialiased box-border;
@@ -37,5 +42,16 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-earth-400 focus:ring-offset-2 focus:ring-offset-cream-50;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

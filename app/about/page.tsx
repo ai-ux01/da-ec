@@ -1,10 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Section, SectionHeading } from "@/components/ui/Section";
 import { founder } from "@/lib/mockData";
 
 export default function AboutPage() {
+  const reduceMotion = useReducedMotion();
   return (
     <div className="pt-16 sm:pt-20">
       <Section className="py-16 sm:py-24">
@@ -14,17 +15,17 @@ export default function AboutPage() {
         />
         <div className="grid sm:grid-cols-5 gap-10 sm:gap-16">
           <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
             className="sm:col-span-2"
           >
-            <div className="aspect-[3/4] bg-earth-200/20 rounded-lg flex items-center justify-center text-earth-300 text-sm">
+            <div className="aspect-[3/4] bg-gradient-to-br from-earth-200/30 to-earth-300/20 rounded-lg flex items-center justify-center border border-earth-200/40 text-earth-400/80 text-sm font-serif tracking-widest">
               {founder.imagePlaceholder ? (
                 <span>Photo placeholder</span>
               ) : (
-                "Image"
+                "AMRYTUM"
               )}
             </div>
             <p className="mt-4 font-serif text-lg text-earth-600">
@@ -33,11 +34,11 @@ export default function AboutPage() {
             <p className="text-sm text-earth-400">{founder.title}</p>
           </motion.div>
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={reduceMotion ? undefined : { opacity: 0, y: 16 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="sm:col-span-3 space-y-8"
+            transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.1 }}
+            className="sm:col-span-3 space-y-8 max-w-prose"
           >
             <div className="prose prose-earth max-w-none">
               <p className="text-earth-400 leading-relaxed whitespace-pre-line">

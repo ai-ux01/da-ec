@@ -9,6 +9,9 @@ out/
 dist/
 build/
 
+# Local uploads (when S3 not configured)
+backend/uploads/
+
 # Env
 .env
 .env.local

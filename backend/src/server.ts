@@ -64,6 +64,7 @@ app.use(`${config.apiPrefix}/auth/request-otp`, authRateLimiter);
 app.use(`${config.apiPrefix}/auth/verify-otp`, authRateLimiter);
 app.use(`${config.apiPrefix}/admin/auth/request-link`, authRateLimiter);
 app.use(`${config.apiPrefix}/payment/create-order`, rateLimit({ windowMs: 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
+app.use(`${config.apiPrefix}/payment/create-order-cod`, rateLimit({ windowMs: 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
 app.use(`${config.apiPrefix}/payment/verify`, rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false }));
 app.use(`${config.apiPrefix}/order/create`, rateLimit({ windowMs: 60 * 1000, max: 15, standardHeaders: true, legacyHeaders: false }));
 

@@ -36,6 +36,14 @@ export const paymentService = {
     if (data.amountPaise < 100) {
       throw new PaymentError("Amount must be at least ₹1 (100 paise).");
     }
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      throw new PaymentError("At least one item with quantity is required.");
+    }
+    for (const item of data.items) {
+      if (!item.size || typeof item.quantity !== "number" || item.quantity < 1) {
+        throw new PaymentError("Each item must have a size and quantity at least 1.");
+      }
+    }
     const address = await prisma.address.findFirst({
       where: { id: data.addressId, customerId: data.customerId },
     });
@@ -47,12 +55,35 @@ export const paymentService = {
       where: { status: "PENDING", createdAt: { lt: expiredAt } },
       data: { status: "EXPIRED" },
     });
-    const razorpay = getRazorpay();
-    const order = await razorpay.orders.create({
-      amount: data.amountPaise,
-      currency: "INR",
-      receipt: `amrytum-${Date.now()}`,
-    });
+    let razorpay;
+    try {
+      razorpay = getRazorpay();
+    } catch (e) {
+      if (e instanceof PaymentError) throw e;
+      throw new PaymentError("Payment provider is not configured.");
+    }
+    let order;
+    try {
+      order = await razorpay.orders.create({
+        amount: data.amountPaise,
+        currency: "INR",
+        receipt: `amrytum-${Date.now()}`,
+      });
+    } catch (e) {
+      console.error("Razorpay create order failed:", e);
+      const err = e as { message?: string; description?: string; error?: { description?: string }; reason?: string };
+      const msg =
+        typeof err?.description === "string"
+          ? err.description
+          : typeof err?.error?.description === "string"
+            ? err.error.description
+            : typeof err?.message === "string"
+              ? err.message
+              : typeof err?.reason === "string"
+                ? err.reason
+                : "Payment provider error. Check server logs.";
+      throw new PaymentError(msg);
+    }
     await prisma.paymentSession.create({
       data: {
         razorpayOrderId: order.id,
@@ -72,13 +103,48 @@ export const paymentService = {
     };
   },
 
-  /** Exported for unit tests. Verifies Razorpay payment signature. */
+  /** Create orders as Cash on Delivery (no Razorpay). Uses same payload shape as createPaymentOrder. */
+  async createOrderCod(data: CreatePaymentOrderInput) {
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      throw new PaymentError("At least one item with quantity is required.");
+    }
+    for (const item of data.items) {
+      if (!item.size || typeof item.quantity !== "number" || item.quantity < 1) {
+        throw new PaymentError("Each item must have a size and quantity at least 1.");
+      }
+    }
+    const address = await prisma.address.findFirst({
+      where: { id: data.addressId, customerId: data.customerId },
+    });
+    if (!address) {
+      throw new PaymentError("Address not found.");
+    }
+    const orders: Awaited<ReturnType<typeof orderService.createFromCheckout>>[] = [];
+    for (const item of data.items) {
+      for (let q = 0; q < item.quantity; q++) {
+        const order = await orderService.createFromCheckout({
+          customerId: data.customerId,
+          addressId: data.addressId,
+          batchId: data.batchId,
+          size: item.size,
+          paymentStatus: "PENDING",
+        });
+        orders.push(order);
+      }
+    }
+    return { orders };
+  },
+
+  /** Exported for unit tests. Verifies Razorpay payment signature (timing-safe). */
   verifySignature(orderId: string, paymentId: string, signature: string, secret?: string): boolean {
     const key = secret ?? config.razorpay.keySecret;
     if (!key) return false;
     const body = `${orderId}|${paymentId}`;
-    const expected = crypto.createHmac("sha256", key).update(body).digest("hex");
-    return expected === signature;
+    const expectedHex = crypto.createHmac("sha256", key).update(body).digest("hex");
+    const expectedBuf = Buffer.from(expectedHex, "hex");
+    const receivedBuf = Buffer.from(signature, "hex");
+    if (expectedBuf.length !== receivedBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, receivedBuf);
   },
 
   async verifyAndFulfill(orderId: string, paymentId: string, signature: string) {
@@ -148,9 +214,17 @@ export const paymentService = {
   async handleWebhook(payload: string, signature: string): Promise<boolean> {
     const secret = config.razorpay.webhookSecret;
     if (!secret) return false;
-    const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-    if (expected !== signature) return false;
-    const body = JSON.parse(payload) as { event: string; payload?: { payment?: { entity?: { id: string; order_id: string } } } };
+    const expectedHex = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+    const expectedBuf = Buffer.from(expectedHex, "hex");
+    const receivedBuf = Buffer.from(signature, "hex");
+    if (expectedBuf.length !== receivedBuf.length) return false;
+    if (!crypto.timingSafeEqual(expectedBuf, receivedBuf)) return false;
+    let body: { event: string; payload?: { payment?: { entity?: { id: string; order_id: string } } } };
+    try {
+      body = JSON.parse(payload) as typeof body;
+    } catch {
+      return false;
+    }
     if (body.event !== "payment.captured") return true;
     const paymentId = body.payload?.payment?.entity?.id;
     const orderId = body.payload?.payment?.entity?.order_id;

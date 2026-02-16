@@ -36,6 +36,17 @@ npm run db:migrate
 npm run db:seed   # optional: creates one farm if none exist
 ```
 
+**If `prisma migrate dev` fails with P3014 (permission denied to create database):**  
+Prisma uses a temporary “shadow” database. Your DB user must be allowed to create databases. As a PostgreSQL superuser (e.g. `postgres`), run:
+
+```sql
+ALTER USER your_db_user CREATEDB;
+```
+
+Replace `your_db_user` with the user in your `DATABASE_URL`. Then run `npm run db:migrate` again.
+
+**Alternative (no CREATEDB):** To only apply existing migrations without creating new ones, use `npm run db:migrate:prod` (or `npx prisma migrate deploy`) instead of `npm run db:migrate`. That skips the shadow database. Use this for initial setup; use `db:migrate` when you change the schema and need new migrations.
+
 4. **Run**
 
 ```bash

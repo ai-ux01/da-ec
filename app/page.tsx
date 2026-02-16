@@ -1,38 +1,64 @@
 "use client";
 
+import Image from "next/image";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { brand } from "@/lib/mockData";
 
+const BANNER_IMAGE_PATH = "/banner3.png";
+
 export default function HomePage() {
+  const [bannerError, setBannerError] = useState(false);
+
   return (
     <div className="pt-16 sm:pt-20">
-      <Section className="py-20 sm:py-28 lg:py-36">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-3xl"
-        >
-          <h1 className="font-serif text-display-xl text-earth-600 text-balance">
-            {brand.tagline}
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-earth-400 max-w-xl leading-relaxed">
-            {brand.subtext}
-          </p>
+      {/* Hero: banner as background, "From Farm to Ghee" on top */}
+      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0 bg-earth-200/20">
+          {!bannerError ? (
+            <Image
+              src={BANNER_IMAGE_PATH}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+              onError={() => setBannerError(true)}
+            />
+          ) : null}
+        </div>
+        {/* Overlay for text readability */}
+        <div className="absolute inset-0 bg-earth-900/40" aria-hidden />
+        {/* Content on top */}
+        <Section className="relative z-10 py-20 sm:py-28 lg:py-36">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="mt-10"
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-3xl"
           >
-            <Button href="/buy" variant="primary" size="lg">
-              {brand.cta}
-            </Button>
+            <h1 className="font-serif text-display-xl text-white text-balance drop-shadow-md">
+              {brand.tagline}
+            </h1>
+            <p className="mt-6 text-lg sm:text-xl text-earth-100 max-w-xl leading-relaxed drop-shadow-sm">
+              {brand.subtext}
+            </p>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="mt-10"
+            >
+              <Button href="/buy" variant="primary" size="lg">
+                {brand.cta}
+              </Button>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      </Section>
+        </Section>
+      </section>
 
       <section className="border-t border-earth-200/40 bg-cream-100/30">
         <Section className="py-16 sm:py-24">
